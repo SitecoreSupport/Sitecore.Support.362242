@@ -89,7 +89,35 @@ using Sitecore.Framework.Publishing.ManifestCalculation;
                             {
                                 var result = _itemRelationshipRepository.GetInRelationships(_sourceName, existOnSource, new HashSet<ItemRelationshipType>() { ItemRelationshipType.CloneOf }).Result;
                                 var cloneIds = result.Select(x => x.SourceId).Distinct();
-                                Emit(cloneIds.Select(x => new InvalidCandidateTargetContext(_targetId, x)).ToArray());
+
+                                #region Added code
+                                var cloneIdsArray = cloneIds.ToArray();
+                                var cloneNodes = _publishCandidateSource.GetNodes(cloneIdsArray).Result.ToDictionary(x => x.Id, x => x);
+
+                                foreach (var cloneId in cloneIdsArray)
+                                {
+                                    if (cloneNodes.TryGetValue(cloneId, out var cloneCandidate))
+                                    {
+                                        if (cloneCandidate.PublishableFor(_targetId))
+                                        {
+                                            Emit(new ValidCandidateTargetContext(
+                                                _targetId,
+                                                cloneCandidate,
+                                                new IItemVariantIdentifier[0],
+                                                new IItemVariantIdentifier[0],
+                                                new IItemVariantIdentifier[0]));
+                                        }
+                                        else
+                                        {
+                                            Emit(cloneIds.Select(x => new InvalidCandidateTargetContext(_targetId, x)).ToArray());
+                                        }
+                                    }
+                                }
+                                #endregion
+
+                                #region Removed code
+                                //Emit(cloneIds.Select(x => new InvalidCandidateTargetContext(_targetId, x)).ToArray());
+                                #endregion
                             }
                         }
 
